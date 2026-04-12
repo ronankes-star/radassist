@@ -8,6 +8,7 @@ import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { ModeToggle } from "@/components/ui/ModeToggle";
 import { exportViewportAsBase64 } from "@/lib/cornerstone/loader";
 import { UploadedImage, AnalysisResult, CaseMode } from "@/lib/types";
+import { TutorPanel } from "@/components/tutor/TutorPanel";
 import toast from "react-hot-toast";
 
 export default function DashboardPage() {
@@ -104,9 +105,7 @@ export default function DashboardPage() {
               onRetry={runAnalysis}
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
-              Learning Mode — coming in next task
-            </div>
+            <TutorPanel hasImage={!!image} />
           )}
         </div>
       </div>
