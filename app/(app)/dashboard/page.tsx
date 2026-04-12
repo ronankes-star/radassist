@@ -9,9 +9,11 @@ import { ModeToggle } from "@/components/ui/ModeToggle";
 import { exportViewportAsBase64 } from "@/lib/cornerstone/loader";
 import { UploadedImage, AnalysisResult, CaseMode } from "@/lib/types";
 import { TutorPanel } from "@/components/tutor/TutorPanel";
+import { useAuth } from "@/components/auth/AuthProvider";
 import toast from "react-hot-toast";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const [mode, setMode] = useState<CaseMode>("quick_read");
   const [image, setImage] = useState<UploadedImage | null>(null);
   const [viewportReady, setViewportReady] = useState(false);
@@ -61,6 +63,47 @@ export default function DashboardPage() {
     }
   }
 
+  async function saveCase() {
+    if (!user || !image) return;
+
+    try {
+      const { supabase } = await import("@/lib/supabase/client");
+      const fileName = `${user.id}/${Date.now()}-${image.file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("case-images")
+        .upload(fileName, image.file);
+
+      if (uploadError) throw uploadError;
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("case-images").getPublicUrl(fileName);
+
+      await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          image_url: publicUrl,
+          modality: image.dicomMetadata?.["Modality"] || analysis?.modality || "",
+          body_region:
+            image.dicomMetadata?.["Body Part Examined"] ||
+            analysis?.body_region ||
+            "",
+          dicom_metadata: image.dicomMetadata,
+          analysis,
+          mode,
+        }),
+      });
+
+      toast.success("Case saved!");
+    } catch (err) {
+      console.error("Save error:", err);
+      toast.error("Failed to save case");
+    }
+  }
+
   function handleImageLoaded(uploadedImage: UploadedImage) {
     setImage(uploadedImage);
     setAnalysis(null);
@@ -81,6 +124,14 @@ export default function DashboardPage() {
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
           >
             Re-analyze
+          </button>
+        )}
+        {image && (
+          <button
+            onClick={saveCase}
+            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-xs font-medium"
+          >
+            Save Case
           </button>
         )}
       </div>
