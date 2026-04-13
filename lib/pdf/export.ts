@@ -16,11 +16,11 @@ export function exportAnalysisPDF(
   const contentWidth = pageWidth - margin * 2;
   let y = margin;
 
-  // Colors
-  const blue = [96, 165, 250]; // blue-400
-  const gray = [148, 163, 184]; // gray-400
-  const darkGray = [30, 41, 59]; // gray-800
-  const white = [226, 232, 240]; // gray-200
+  // Colors (typed as tuples for jsPDF spread)
+  const blue: [number, number, number] = [96, 165, 250];
+  const gray: [number, number, number] = [148, 163, 184];
+  const darkGray: [number, number, number] = [30, 41, 59];
+  const white: [number, number, number] = [226, 232, 240];
 
   // Background
   doc.setFillColor(3, 7, 18); // gray-950
