@@ -13,7 +13,7 @@ function formatFileSize(bytes: number): string {
 
 export function ImageInfoBar({ filename, fileSize, fileType, dimensions }: ImageInfoBarProps) {
   return (
-    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm text-xs text-gray-400 border-t border-gray-800 z-10">
+    <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1.5 bg-gray-900/80 backdrop-blur-sm text-xs text-gray-400 border-t border-gray-800 z-50">
       <span className="truncate max-w-[200px]">{filename}</span>
       <div className="flex items-center gap-3">
         {dimensions && (

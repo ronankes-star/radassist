@@ -18,7 +18,7 @@ export function ImageControls({
   inverted,
 }: ImageControlsProps) {
   return (
-    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-gray-700 z-10">
+    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-gray-900/90 backdrop-blur-sm rounded-lg px-2 py-1.5 border border-gray-700 z-50">
       <button
         onClick={onZoomOut}
         className="px-2.5 py-1 rounded text-xs font-medium bg-gray-800 text-gray-300 hover:bg-gray-700"
