@@ -8,6 +8,7 @@ import { AnnotationOverlay } from "@/components/viewer/AnnotationOverlay";
 import { AnnotationToolbar } from "@/components/viewer/AnnotationToolbar";
 import { FindingLabels } from "@/components/viewer/FindingLabels";
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
+import { ComparisonPanel } from "@/components/analysis/ComparisonPanel";
 import { ModeToggle } from "@/components/ui/ModeToggle";
 import { fileToBase64 } from "@/lib/utils";
 import { UploadedImage, AnalysisResult, CaseMode, Annotation, AnnotationTool, AnnotationColor } from "@/lib/types";
@@ -34,6 +35,12 @@ export default function DashboardPage() {
   const [annotationColor, setAnnotationColor] = useState<AnnotationColor>("#ef4444");
   const [annotationsVisible, setAnnotationsVisible] = useState(true);
   const [findingLabelsVisible, setFindingLabelsVisible] = useState(true);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareImage, setCompareImage] = useState<UploadedImage | null>(null);
+  const [compareBase64, setCompareBase64] = useState<string | null>(null);
+  const [compareResult, setCompareResult] = useState<any>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
 
   function handleZoomIn() {
     setZoom((z) => Math.min(z + 0.5, 5));
@@ -76,6 +83,45 @@ export default function DashboardPage() {
 
   function handleAddAnnotation(annotation: Annotation) {
     setAnnotations((prev) => [...prev, annotation]);
+  }
+
+  async function handleCompareImageLoaded(uploadedImage: UploadedImage) {
+    setCompareImage(uploadedImage);
+    let base64: string | null = null;
+    try {
+      base64 = await fileToBase64(uploadedImage.file);
+      setCompareBase64(base64);
+    } catch {
+      console.error("Failed to convert compare image to base64");
+    }
+    if (base64 && imageBase64) {
+      runComparison(imageBase64, base64);
+    }
+  }
+
+  async function runComparison(imgA: string, imgB: string) {
+    setCompareLoading(true);
+    setCompareError(null);
+    setCompareResult(null);
+    try {
+      const res = await fetch("/api/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageABase64: imgA, imageBBase64: imgB }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Comparison failed");
+      }
+      const result = await res.json();
+      setCompareResult(result);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Comparison failed";
+      setCompareError(message);
+      toast.error(message);
+    } finally {
+      setCompareLoading(false);
+    }
   }
 
   async function runAnalysis(base64Override?: string) {
@@ -189,6 +235,11 @@ export default function DashboardPage() {
     setInverted(false);
     setImageDimensions(null);
     setAnnotations([]);
+    setCompareMode(false);
+    setCompareImage(null);
+    setCompareBase64(null);
+    setCompareResult(null);
+    setCompareError(null);
   }
 
   return (
@@ -221,87 +272,143 @@ export default function DashboardPage() {
               </button>
             </>
           )}
+          {image && !compareMode && (
+            <button
+              onClick={() => setCompareMode(true)}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-medium"
+            >
+              Compare
+            </button>
+          )}
+          {compareMode && (
+            <button
+              onClick={() => {
+                setCompareMode(false);
+                setCompareImage(null);
+                setCompareBase64(null);
+                setCompareResult(null);
+                setCompareError(null);
+              }}
+              className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-xs font-medium"
+            >
+              Exit Compare
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left: Image viewer (60%) */}
-        <div className="w-[60%] border-r border-gray-800 bg-black relative">
-          {image && image.previewUrl ? (
-            <>
-              <div
-                className="absolute inset-0 overflow-hidden"
-                style={{ cursor: zoom > 1 ? (isPanning ? "grabbing" : "grab") : "default" }}
-                onWheel={handleWheel}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onDoubleClick={handleResetView}
-              >
-                <div className="w-full h-full flex items-center justify-center">
-                  <img
-                    src={image.previewUrl}
-                    alt="Uploaded medical image"
-                    className="max-w-full max-h-full object-contain select-none"
-                    style={{
-                      transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-                      transition: isPanning ? "none" : "transform 0.2s ease",
-                      filter: inverted ? "invert(1)" : "none",
-                    }}
-                    draggable={false}
-                    onLoad={handleImageLoad}
-                  />
+        {compareMode ? (
+          /* Compare mode: split left panel */
+          <div className="w-[60%] border-r border-gray-800 flex">
+            {/* Image A */}
+            <div className="w-1/2 bg-black relative border-r border-gray-800">
+              <div className="absolute top-2 left-2 z-40 px-2 py-0.5 bg-blue-600/80 text-white text-[10px] font-bold rounded">A</div>
+              {image && image.previewUrl && (
+                <div className="absolute inset-0 flex items-center justify-center p-2">
+                  <img src={image.previewUrl} alt="Image A" className="max-w-full max-h-full object-contain" />
                 </div>
-              </div>
-              <ImageControls
-                zoom={zoom}
-                onZoomIn={handleZoomIn}
-                onZoomOut={handleZoomOut}
-                onReset={handleResetView}
-                onInvert={() => setInverted(!inverted)}
-                inverted={inverted}
-              />
-              <AnnotationToolbar
-                activeTool={annotationTool}
-                activeColor={annotationColor}
-                onToolChange={setAnnotationTool}
-                onColorChange={setAnnotationColor}
-                onClear={() => setAnnotations([])}
-                annotationsVisible={annotationsVisible}
-                onToggleVisibility={() => setAnnotationsVisible(!annotationsVisible)}
-                findingLabelsVisible={findingLabelsVisible}
-                onToggleFindingLabels={() => setFindingLabelsVisible(!findingLabelsVisible)}
-              />
-              <AnnotationOverlay
-                annotations={annotations}
-                onAddAnnotation={handleAddAnnotation}
-                activeTool={annotationTool}
-                activeColor={annotationColor}
-                visible={annotationsVisible}
-              />
-              {analysis?.positioned_findings && (
-                <FindingLabels
-                  findings={analysis.positioned_findings}
-                  visible={findingLabelsVisible}
-                />
               )}
-              <ImageInfoBar
-                filename={image.file.name}
-                fileSize={image.file.size}
-                fileType={image.fileType}
-                dimensions={imageDimensions || undefined}
-              />
-            </>
-          ) : (
-            <ImageUpload onImageLoaded={handleImageLoaded} />
-          )}
-        </div>
+            </div>
+            {/* Image B */}
+            <div className="w-1/2 bg-black relative">
+              <div className="absolute top-2 left-2 z-40 px-2 py-0.5 bg-purple-600/80 text-white text-[10px] font-bold rounded">B</div>
+              {compareImage && compareImage.previewUrl ? (
+                <div className="absolute inset-0 flex items-center justify-center p-2">
+                  <img src={compareImage.previewUrl} alt="Image B" className="max-w-full max-h-full object-contain" />
+                </div>
+              ) : (
+                <ImageUpload onImageLoaded={handleCompareImageLoaded} />
+              )}
+            </div>
+          </div>
+        ) : (
+          /* Normal single image mode */
+          <div className="w-[60%] border-r border-gray-800 bg-black relative">
+            {image && image.previewUrl ? (
+              <>
+                <div
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ cursor: zoom > 1 ? (isPanning ? "grabbing" : "grab") : "default" }}
+                  onWheel={handleWheel}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                  onDoubleClick={handleResetView}
+                >
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img
+                      src={image.previewUrl}
+                      alt="Uploaded medical image"
+                      className="max-w-full max-h-full object-contain select-none"
+                      style={{
+                        transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                        transition: isPanning ? "none" : "transform 0.2s ease",
+                        filter: inverted ? "invert(1)" : "none",
+                      }}
+                      draggable={false}
+                      onLoad={handleImageLoad}
+                    />
+                  </div>
+                </div>
+                <ImageControls
+                  zoom={zoom}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                  onReset={handleResetView}
+                  onInvert={() => setInverted(!inverted)}
+                  inverted={inverted}
+                />
+                <AnnotationToolbar
+                  activeTool={annotationTool}
+                  activeColor={annotationColor}
+                  onToolChange={setAnnotationTool}
+                  onColorChange={setAnnotationColor}
+                  onClear={() => setAnnotations([])}
+                  annotationsVisible={annotationsVisible}
+                  onToggleVisibility={() => setAnnotationsVisible(!annotationsVisible)}
+                  findingLabelsVisible={findingLabelsVisible}
+                  onToggleFindingLabels={() => setFindingLabelsVisible(!findingLabelsVisible)}
+                />
+                <AnnotationOverlay
+                  annotations={annotations}
+                  onAddAnnotation={handleAddAnnotation}
+                  activeTool={annotationTool}
+                  activeColor={annotationColor}
+                  visible={annotationsVisible}
+                />
+                {analysis?.positioned_findings && (
+                  <FindingLabels
+                    findings={analysis.positioned_findings}
+                    visible={findingLabelsVisible}
+                  />
+                )}
+                <ImageInfoBar
+                  filename={image.file.name}
+                  fileSize={image.file.size}
+                  fileType={image.fileType}
+                  dimensions={imageDimensions || undefined}
+                />
+              </>
+            ) : (
+              <ImageUpload onImageLoaded={handleImageLoaded} />
+            )}
+          </div>
+        )}
 
-        {/* Right: Analysis / Tutor Panel (40%) */}
+        {/* Right: Analysis / Tutor / Comparison Panel (40%) */}
         <div className="w-[40%] bg-gray-950">
-          {mode === "quick_read" ? (
+          {compareMode ? (
+            <ComparisonPanel
+              result={compareResult}
+              loading={compareLoading}
+              error={compareError}
+              onRetry={() => imageBase64 && compareBase64 && runComparison(imageBase64, compareBase64)}
+            />
+          ) : mode === "quick_read" ? (
             <AnalysisPanel
               analysis={analysis}
               loading={analysisLoading}
