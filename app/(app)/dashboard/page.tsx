@@ -270,6 +270,7 @@ export default function DashboardPage() {
               loading={analysisLoading}
               error={analysisError}
               onRetry={() => runAnalysis()}
+              imageBase64={imageBase64}
             />
           ) : (
             <TutorPanel hasImage={!!image} imageBase64={imageBase64} />

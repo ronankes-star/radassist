@@ -6,12 +6,14 @@ import { FindingsList } from "./FindingsList";
 import { DifferentialList } from "./DifferentialList";
 import { NextStepsList } from "./NextStepsList";
 import { AnalysisSkeleton } from "@/components/ui/AnalysisSkeleton";
+import { exportAnalysisPDF } from "@/lib/pdf/export";
 
 interface AnalysisPanelProps {
   analysis: AnalysisResult | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
+  imageBase64?: string | null;
 }
 
 export function AnalysisPanel({
@@ -19,6 +21,7 @@ export function AnalysisPanel({
   loading,
   error,
   onRetry,
+  imageBase64,
 }: AnalysisPanelProps) {
   if (loading) {
     return <AnalysisSkeleton />;
@@ -83,6 +86,15 @@ export function AnalysisPanel({
 
       <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "500ms", opacity: 0 }}>
         <NextStepsList steps={analysis.next_steps} />
+      </div>
+
+      <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "500ms", opacity: 0 }}>
+        <button
+          onClick={() => exportAnalysisPDF(analysis, imageBase64 || null)}
+          className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
+        >
+          📄 Export PDF Report
+        </button>
       </div>
 
       <div
