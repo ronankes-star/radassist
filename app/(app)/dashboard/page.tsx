@@ -384,6 +384,9 @@ export default function DashboardPage() {
                   <FindingLabels
                     findings={analysis.positioned_findings}
                     visible={findingLabelsVisible}
+                    zoom={zoom}
+                    pan={pan}
+                    isPanning={isPanning}
                   />
                 )}
                 <ImageInfoBar

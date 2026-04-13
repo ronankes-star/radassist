@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from "react";
 import { detectFileType } from "@/lib/utils";
-import { loadImageFile, loadDicomFile } from "@/lib/cornerstone/loader";
 import { UploadedImage } from "@/lib/types";
 import toast from "react-hot-toast";
 
@@ -22,17 +21,40 @@ export function ImageUpload({ onImageLoaded }: ImageUploadProps) {
         return;
       }
 
-      let dicomMetadata: Record<string, string> | null = null;
-
       try {
+        // For DICOM files, try to extract metadata
+        let dicomMetadata: Record<string, string> | null = null;
         if (fileType === "dicom") {
-          dicomMetadata = await loadDicomFile(file);
-        } else {
-          await loadImageFile(file);
+          try {
+            const dicomParser = (await import("dicom-parser")).default;
+            const arrayBuffer = await file.arrayBuffer();
+            const dataSet = dicomParser.parseDicom(new Uint8Array(arrayBuffer));
+
+            const tags: Record<string, string> = {
+              x00080060: "Modality",
+              x00080070: "Manufacturer",
+              x00180060: "KVP",
+              x00181152: "Exposure (mAs)",
+              x00180050: "Slice Thickness",
+              x00280010: "Rows",
+              x00280011: "Columns",
+              x00180015: "Body Part Examined",
+              x00185101: "View Position",
+            };
+
+            dicomMetadata = {};
+            for (const [tag, label] of Object.entries(tags)) {
+              const value = dataSet.string(tag);
+              if (value) {
+                dicomMetadata[label] = value;
+              }
+            }
+          } catch {
+            console.warn("Could not parse DICOM metadata");
+          }
         }
 
-        const previewUrl =
-          fileType !== "dicom" ? URL.createObjectURL(file) : null;
+        const previewUrl = URL.createObjectURL(file);
 
         onImageLoaded({
           file,

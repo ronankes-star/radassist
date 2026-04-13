@@ -6,14 +6,14 @@ import { TutorMessage } from "./TutorMessage";
 import { TutorInput } from "./TutorInput";
 import { QuickActions } from "./QuickActions";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { exportViewportAsBase64 } from "@/lib/cornerstone/loader";
 import toast from "react-hot-toast";
 
 interface TutorPanelProps {
   hasImage: boolean;
+  imageBase64: string | null;
 }
 
-export function TutorPanel({ hasImage }: TutorPanelProps) {
+export function TutorPanel({ hasImage, imageBase64 }: TutorPanelProps) {
   const [messages, setMessages] = useState<TutorMessageType[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
@@ -26,8 +26,7 @@ export function TutorPanel({ hasImage }: TutorPanelProps) {
   }, [messages]);
 
   async function sendMessage(content: string) {
-    const base64 = exportViewportAsBase64();
-    if (!base64) {
+    if (!imageBase64) {
       toast.error("No image loaded");
       return;
     }
@@ -47,7 +46,7 @@ export function TutorPanel({ hasImage }: TutorPanelProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          imageBase64: base64,
+          imageBase64,
           messages: updatedMessages,
         }),
       });
@@ -58,7 +57,7 @@ export function TutorPanel({ hasImage }: TutorPanelProps) {
 
       const data = await res.json();
       setMessages([...updatedMessages, data.message]);
-    } catch (err) {
+    } catch {
       toast.error("Failed to get tutor response. Please try again.");
       setMessages(messages);
     } finally {
@@ -67,21 +66,20 @@ export function TutorPanel({ hasImage }: TutorPanelProps) {
   }
 
   async function startSession() {
-    setSessionStarted(true);
-    setMessages([]);
-
-    const base64 = exportViewportAsBase64();
-    if (!base64) {
+    if (!imageBase64) {
       toast.error("No image loaded");
       return;
     }
 
+    setSessionStarted(true);
+    setMessages([]);
     setLoading(true);
+
     try {
       const res = await fetch("/api/tutor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64, messages: [] }),
+        body: JSON.stringify({ imageBase64, messages: [] }),
       });
 
       if (!res.ok) throw new Error("Failed to start session");

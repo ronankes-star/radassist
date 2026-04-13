@@ -1,13 +1,16 @@
-import { RenderingEngine, Enums, type Types } from "@cornerstonejs/core";
-import dicomParser from "dicom-parser";
-
 const RENDERING_ENGINE_ID = "radassist-engine";
 const VIEWPORT_ID = "radassist-viewport";
 
-let renderingEngine: RenderingEngine | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let renderingEngine: any = null;
 
-export function getRenderingEngine(): RenderingEngine {
+async function getCore() {
+  return await import("@cornerstonejs/core");
+}
+
+export async function getRenderingEngine() {
   if (!renderingEngine) {
+    const { RenderingEngine } = await getCore();
     renderingEngine = new RenderingEngine(RENDERING_ENGINE_ID);
   }
   return renderingEngine;
@@ -17,8 +20,22 @@ export function getViewportId(): string {
   return VIEWPORT_ID;
 }
 
-export function setupViewport(element: HTMLDivElement): void {
-  const engine = getRenderingEngine();
+export async function setupViewport(element: HTMLDivElement): Promise<void> {
+  const { Enums } = await getCore();
+  const engine = await getRenderingEngine();
+
+  // Cornerstone needs the element to have non-zero dimensions
+  // Wait for the element to have a size (may need a frame for layout)
+  await new Promise<void>((resolve) => {
+    function check() {
+      if (element.offsetWidth > 0 && element.offsetHeight > 0) {
+        resolve();
+      } else {
+        requestAnimationFrame(check);
+      }
+    }
+    check();
+  });
 
   const viewportInput = {
     viewportId: VIEWPORT_ID,
@@ -30,8 +47,8 @@ export function setupViewport(element: HTMLDivElement): void {
 }
 
 export async function loadImageFile(file: File): Promise<void> {
-  const engine = getRenderingEngine();
-  const viewport = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
+  const engine = await getRenderingEngine();
+  const viewport = engine.getViewport(VIEWPORT_ID);
   if (!viewport) throw new Error("Viewport not initialized");
 
   const imageId = `wadouri:${URL.createObjectURL(file)}`;
@@ -42,14 +59,15 @@ export async function loadImageFile(file: File): Promise<void> {
 export async function loadDicomFile(
   file: File
 ): Promise<Record<string, string>> {
-  const engine = getRenderingEngine();
-  const viewport = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
+  const engine = await getRenderingEngine();
+  const viewport = engine.getViewport(VIEWPORT_ID);
   if (!viewport) throw new Error("Viewport not initialized");
 
   const imageId = `wadouri:${URL.createObjectURL(file)}`;
   await viewport.setStack([imageId]);
   viewport.render();
 
+  const dicomParser = (await import("dicom-parser")).default;
   const arrayBuffer = await file.arrayBuffer();
   const dataSet = dicomParser.parseDicom(new Uint8Array(arrayBuffer));
 
@@ -79,26 +97,26 @@ export async function loadDicomFile(
 }
 
 export function exportViewportAsBase64(): string | null {
-  const engine = getRenderingEngine();
-  const viewport = engine.getViewport(VIEWPORT_ID);
+  if (!renderingEngine) return null;
+  const viewport = renderingEngine.getViewport(VIEWPORT_ID);
   if (!viewport) return null;
 
   const canvas = viewport.getCanvas();
   return canvas.toDataURL("image/png");
 }
 
-export function resetViewport(): void {
-  const engine = getRenderingEngine();
-  const viewport = engine.getViewport(VIEWPORT_ID);
+export async function resetViewport(): Promise<void> {
+  if (!renderingEngine) return;
+  const viewport = renderingEngine.getViewport(VIEWPORT_ID);
   if (!viewport) return;
 
   viewport.resetCamera();
   viewport.render();
 }
 
-export function invertImage(): void {
-  const engine = getRenderingEngine();
-  const viewport = engine.getViewport(VIEWPORT_ID) as Types.IStackViewport;
+export async function invertImage(): Promise<void> {
+  if (!renderingEngine) return;
+  const viewport = renderingEngine.getViewport(VIEWPORT_ID);
   if (!viewport) return;
 
   const { invert } = viewport.getProperties();

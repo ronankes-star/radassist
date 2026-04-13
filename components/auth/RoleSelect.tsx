@@ -14,7 +14,12 @@ export function RoleSelect() {
   const router = useRouter();
 
   async function handleSubmit() {
-    if (!selected || !user) return;
+    if (!selected) return;
+    if (!user) {
+      toast.error("Not logged in. Please sign in first.");
+      router.push("/login");
+      return;
+    }
     setLoading(true);
 
     const { error } = await supabase
@@ -23,6 +28,7 @@ export function RoleSelect() {
       .eq("id", user.id);
 
     if (error) {
+      console.error("Role update error:", error);
       toast.error("Failed to save role. Please try again.");
       setLoading(false);
       return;

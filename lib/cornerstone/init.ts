@@ -1,14 +1,15 @@
-import { init as coreInit } from "@cornerstonejs/core";
-import { init as dicomImageLoaderInit } from "@cornerstonejs/dicom-image-loader";
-import { init as cornerstoneToolsInit } from "@cornerstonejs/tools";
-
 let initialized = false;
 
 export async function initCornerstone(): Promise<void> {
   if (initialized) return;
+  if (typeof window === "undefined") return;
+
+  const { init: coreInit } = await import("@cornerstonejs/core");
+  const dicomImageLoader = await import("@cornerstonejs/dicom-image-loader");
+  const { init: cornerstoneToolsInit } = await import("@cornerstonejs/tools");
 
   await coreInit();
-  dicomImageLoaderInit();
+  dicomImageLoader.init();
   await cornerstoneToolsInit();
 
   initialized = true;

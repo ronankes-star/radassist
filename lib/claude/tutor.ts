@@ -3,9 +3,25 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources/messages/messages
 import { LEARNING_MODE_SYSTEM_PROMPT } from "./prompts";
 import { TutorMessage } from "@/lib/types";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+function getClient() {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      const envPath = path.join(process.cwd(), ".env.local");
+      const envContent = fs.readFileSync(envPath, "utf-8");
+      const match = envContent.match(/ANTHROPIC_API_KEY=(.+)/);
+      if (match) {
+        return new Anthropic({ apiKey: match[1].trim() });
+      }
+    } catch (e) {
+      console.error("Failed to read .env.local:", e);
+    }
+    throw new Error("ANTHROPIC_API_KEY is not set");
+  }
+  return new Anthropic({ apiKey });
+}
 
 export async function tutorConversation(
   imageBase64: string,
@@ -72,7 +88,7 @@ export async function tutorConversation(
     }
   }
 
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 1024,
     system: LEARNING_MODE_SYSTEM_PROMPT,

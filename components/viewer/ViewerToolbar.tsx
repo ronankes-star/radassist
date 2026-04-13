@@ -16,8 +16,8 @@ const tools: { name: ActiveToolName; label: string; shortcut: string }[] = [
 export function ViewerToolbar() {
   const [activeTool, setActiveToolState] = useState<ActiveToolName>("WindowLevel");
 
-  function handleToolClick(toolName: ActiveToolName) {
-    setActiveTool(toolName);
+  async function handleToolClick(toolName: ActiveToolName) {
+    await setActiveTool(toolName);
     setActiveToolState(toolName);
   }
 
@@ -41,14 +41,14 @@ export function ViewerToolbar() {
       <div className="w-px h-5 bg-gray-700 mx-1" />
 
       <button
-        onClick={invertImage}
+        onClick={() => invertImage()}
         className="px-3 py-1.5 rounded text-xs font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition"
         title="Invert (I)"
       >
         Invert
       </button>
       <button
-        onClick={resetViewport}
+        onClick={() => resetViewport()}
         className="px-3 py-1.5 rounded text-xs font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200 transition"
         title="Reset (R)"
       >

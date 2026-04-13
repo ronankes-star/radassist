@@ -3,6 +3,7 @@ import { analyzeImage } from "@/lib/claude/analyze";
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("ANTHROPIC_API_KEY set:", !!process.env.ANTHROPIC_API_KEY, "length:", process.env.ANTHROPIC_API_KEY?.length);
     const body = await request.json();
     const { imageBase64, modality, bodyRegion } = body;
 

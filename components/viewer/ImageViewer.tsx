@@ -22,13 +22,18 @@ export function ImageViewer({ onViewportReady }: ImageViewerProps) {
     initializedRef.current = true;
 
     async function init() {
-      await initCornerstone();
-      registerTools();
+      try {
+        await initCornerstone();
+        await registerTools();
 
-      if (containerRef.current) {
-        setupViewport(containerRef.current);
-        createToolGroup(getViewportId());
-        onViewportReady?.();
+        if (containerRef.current) {
+          await setupViewport(containerRef.current);
+          await createToolGroup(getViewportId());
+          onViewportReady?.();
+        }
+      } catch (err) {
+        console.error("Cornerstone init failed:", err);
+        initializedRef.current = false;
       }
     }
 
@@ -41,10 +46,10 @@ export function ImageViewer({ onViewportReady }: ImageViewerProps) {
   }, [onViewportReady]);
 
   return (
-    <div className="relative w-full h-full bg-black">
+    <div className="relative w-full h-full bg-black" style={{ minHeight: "400px" }}>
       <div
         ref={containerRef}
-        className="w-full h-full"
+        style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}
         onContextMenu={(e) => e.preventDefault()}
       />
     </div>

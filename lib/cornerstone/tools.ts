@@ -1,19 +1,16 @@
-import {
-  ToolGroupManager,
-  WindowLevelTool,
-  ZoomTool,
-  PanTool,
-  LengthTool,
-  AngleTool,
-  ArrowAnnotateTool,
-  StackScrollTool,
-  addTool,
-  Enums as csToolsEnums,
-} from "@cornerstonejs/tools";
-
 const TOOL_GROUP_ID = "radassist-tools";
 
 let toolsRegistered = false;
+
+// Cache the imported modules
+let _tools: typeof import("@cornerstonejs/tools") | null = null;
+
+async function getTools() {
+  if (!_tools) {
+    _tools = await import("@cornerstonejs/tools");
+  }
+  return _tools;
+}
 
 export type ActiveToolName =
   | "WindowLevel"
@@ -23,8 +20,19 @@ export type ActiveToolName =
   | "Angle"
   | "ArrowAnnotate";
 
-export function registerTools(): void {
+export async function registerTools(): Promise<void> {
   if (toolsRegistered) return;
+
+  const {
+    addTool,
+    WindowLevelTool,
+    ZoomTool,
+    PanTool,
+    LengthTool,
+    AngleTool,
+    ArrowAnnotateTool,
+    StackScrollTool,
+  } = await getTools();
 
   addTool(WindowLevelTool);
   addTool(ZoomTool);
@@ -37,7 +45,19 @@ export function registerTools(): void {
   toolsRegistered = true;
 }
 
-export function createToolGroup(viewportId: string): void {
+export async function createToolGroup(viewportId: string): Promise<void> {
+  const {
+    ToolGroupManager,
+    WindowLevelTool,
+    ZoomTool,
+    PanTool,
+    LengthTool,
+    AngleTool,
+    ArrowAnnotateTool,
+    StackScrollTool,
+    Enums: csToolsEnums,
+  } = await getTools();
+
   try {
     ToolGroupManager.destroyToolGroup(TOOL_GROUP_ID);
   } catch {
@@ -68,7 +88,18 @@ export function createToolGroup(viewportId: string): void {
   });
 }
 
-export function setActiveTool(toolName: ActiveToolName): void {
+export async function setActiveTool(toolName: ActiveToolName): Promise<void> {
+  const {
+    ToolGroupManager,
+    WindowLevelTool,
+    ZoomTool,
+    PanTool,
+    LengthTool,
+    AngleTool,
+    ArrowAnnotateTool,
+    Enums: csToolsEnums,
+  } = await getTools();
+
   const toolGroup = ToolGroupManager.getToolGroup(TOOL_GROUP_ID);
   if (!toolGroup) return;
 
