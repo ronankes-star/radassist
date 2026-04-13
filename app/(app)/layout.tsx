@@ -24,6 +24,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             >
               Case History
             </Link>
+            <Link href="/library" className="text-gray-400 hover:text-gray-200 text-sm">
+              Case Library
+            </Link>
             <Link
               href="/progress"
               className="text-gray-400 hover:text-gray-200 text-sm"
