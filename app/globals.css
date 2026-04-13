@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@source "../components";
+@source "../lib";
+@source "../app";
 
 html,
 body {
@@ -20,4 +21,26 @@ body {
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Button hover effects */
+button {
+  transition: transform 0.1s ease;
+}
+button:hover {
+  transform: scale(1.02);
+}
+button:active {
+  transform: scale(0.98);
 }

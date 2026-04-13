@@ -5,7 +5,7 @@ import { ModalityBadge } from "./ModalityBadge";
 import { FindingsList } from "./FindingsList";
 import { DifferentialList } from "./DifferentialList";
 import { NextStepsList } from "./NextStepsList";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AnalysisSkeleton } from "@/components/ui/AnalysisSkeleton";
 
 interface AnalysisPanelProps {
   analysis: AnalysisResult | null;
@@ -21,12 +21,7 @@ export function AnalysisPanel({
   onRetry,
 }: AnalysisPanelProps) {
   if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-3">
-        <LoadingSpinner size="lg" />
-        <p className="text-gray-400 text-sm">Analyzing image...</p>
-      </div>
-    );
+    return <AnalysisSkeleton />;
   }
 
   if (error) {
@@ -55,16 +50,25 @@ export function AnalysisPanel({
 
   return (
     <div className="p-5 space-y-5 overflow-y-auto h-full">
-      <div className="text-blue-400 font-semibold text-sm">AI Analysis</div>
+      <div
+        style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "0ms", opacity: 0 }}
+        className="text-blue-400 font-semibold text-sm"
+      >
+        AI Analysis
+      </div>
 
-      <ModalityBadge
-        modality={analysis.modality}
-        bodyRegion={analysis.body_region}
-      />
+      <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "100ms", opacity: 0 }}>
+        <ModalityBadge
+          modality={analysis.modality}
+          bodyRegion={analysis.body_region}
+        />
+      </div>
 
-      <FindingsList findings={analysis.findings} />
+      <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "200ms", opacity: 0 }}>
+        <FindingsList findings={analysis.findings} />
+      </div>
 
-      <div>
+      <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "300ms", opacity: 0 }}>
         <div className="text-gray-400 text-xs uppercase tracking-wider mb-2">
           Impression
         </div>
@@ -73,11 +77,18 @@ export function AnalysisPanel({
         </div>
       </div>
 
-      <DifferentialList differentials={analysis.differentials} />
+      <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "400ms", opacity: 0 }}>
+        <DifferentialList differentials={analysis.differentials} />
+      </div>
 
-      <NextStepsList steps={analysis.next_steps} />
+      <div style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "500ms", opacity: 0 }}>
+        <NextStepsList steps={analysis.next_steps} />
+      </div>
 
-      <div className="pt-2 border-t border-gray-800">
+      <div
+        style={{ animation: "fadeSlideIn 0.3s ease forwards", animationDelay: "600ms", opacity: 0 }}
+        className="pt-2 border-t border-gray-800"
+      >
         <p className="text-gray-600 text-xs italic">
           ⚠️ For educational purposes only. Not a clinical diagnostic tool.
         </p>
