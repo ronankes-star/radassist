@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { ImageViewer } from "@/components/viewer/ImageViewer";
-import { ViewerToolbar } from "@/components/viewer/ViewerToolbar";
+import { useState } from "react";
 import { ImageUpload } from "@/components/viewer/ImageUpload";
+import { ImageControls } from "@/components/viewer/ImageControls";
+import { ImageInfoBar } from "@/components/viewer/ImageInfoBar";
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { ModeToggle } from "@/components/ui/ModeToggle";
-import { exportViewportAsBase64 } from "@/lib/cornerstone/loader";
+import { fileToBase64 } from "@/lib/utils";
 import { UploadedImage, AnalysisResult, CaseMode } from "@/lib/types";
 import { TutorPanel } from "@/components/tutor/TutorPanel";
 import { useAuth } from "@/components/auth/AuthProvider";
@@ -16,26 +16,68 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [mode, setMode] = useState<CaseMode>("quick_read");
   const [image, setImage] = useState<UploadedImage | null>(null);
-  const [viewportReady, setViewportReady] = useState(false);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [inverted, setInverted] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
-  const handleViewportReady = useCallback(() => {
-    setViewportReady(true);
-  }, []);
+  function handleZoomIn() {
+    setZoom((z) => Math.min(z + 0.5, 5));
+  }
 
-  async function runAnalysis() {
+  function handleZoomOut() {
+    setZoom((z) => Math.max(z - 0.5, 0.5));
+  }
+
+  function handleResetView() {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }
+
+  function handleWheel(e: React.WheelEvent) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.25 : 0.25;
+    setZoom((z) => Math.min(Math.max(z + delta, 0.5), 5));
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    if (zoom <= 1) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  }
+
+  function handleMouseMove(e: React.MouseEvent) {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  }
+
+  function handleMouseUp() {
+    setIsPanning(false);
+  }
+
+  function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+  }
+
+  async function runAnalysis(base64Override?: string) {
+    const base64 = base64Override || imageBase64;
+    if (!base64) {
+      toast.error("No image loaded. Please upload an image first.");
+      return;
+    }
+
     setAnalysisLoading(true);
     setAnalysisError(null);
     setAnalysis(null);
 
     try {
-      const base64 = exportViewportAsBase64();
-      if (!base64) {
-        throw new Error("Could not export viewport image");
-      }
-
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,59 +146,133 @@ export default function DashboardPage() {
     }
   }
 
-  function handleImageLoaded(uploadedImage: UploadedImage) {
+  async function handleImageLoaded(uploadedImage: UploadedImage) {
     setImage(uploadedImage);
     setAnalysis(null);
     setAnalysisError(null);
 
-    if (mode === "quick_read") {
-      setTimeout(() => runAnalysis(), 500);
+    let base64: string | null = null;
+    try {
+      base64 = await fileToBase64(uploadedImage.file);
+      setImageBase64(base64);
+    } catch {
+      console.error("Failed to convert image to base64");
     }
+
+    if (mode === "quick_read" && base64) {
+      runAnalysis(base64);
+    }
+  }
+
+  function clearImage() {
+    if (image?.previewUrl) {
+      URL.revokeObjectURL(image.previewUrl);
+    }
+    setImage(null);
+    setImageBase64(null);
+    setAnalysis(null);
+    setAnalysisError(null);
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setInverted(false);
+    setImageDimensions(null);
   }
 
   return (
     <div className="flex flex-col h-full">
+      {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-800">
         <ModeToggle mode={mode} onModeChange={setMode} />
-        {image && mode === "quick_read" && !analysisLoading && (
-          <button
-            onClick={runAnalysis}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
-          >
-            Re-analyze
-          </button>
-        )}
-        {image && (
-          <button
-            onClick={saveCase}
-            className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-xs font-medium"
-          >
-            Save Case
-          </button>
-        )}
+        <div className="flex gap-2">
+          {image && mode === "quick_read" && !analysisLoading && (
+            <button
+              onClick={() => runAnalysis()}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium"
+            >
+              Re-analyze
+            </button>
+          )}
+          {image && (
+            <>
+              <button
+                onClick={saveCase}
+                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg text-xs font-medium"
+              >
+                Save Case
+              </button>
+              <button
+                onClick={clearImage}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg text-xs font-medium"
+              >
+                New Image
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
+      {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-col w-[60%] border-r border-gray-800">
-          <ViewerToolbar />
-          <div className="relative flex-1">
-            <ImageViewer onViewportReady={handleViewportReady} />
-            {!image && viewportReady && (
-              <ImageUpload onImageLoaded={handleImageLoaded} />
-            )}
-          </div>
+        {/* Left: Image viewer (60%) */}
+        <div className="w-[60%] border-r border-gray-800 bg-black relative">
+          {image && image.previewUrl ? (
+            <>
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ cursor: zoom > 1 ? (isPanning ? "grabbing" : "grab") : "default" }}
+                onWheel={handleWheel}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onDoubleClick={handleResetView}
+              >
+                <div className="w-full h-full flex items-center justify-center">
+                  <img
+                    src={image.previewUrl}
+                    alt="Uploaded medical image"
+                    className="max-w-full max-h-full object-contain select-none"
+                    style={{
+                      transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+                      transition: isPanning ? "none" : "transform 0.2s ease",
+                      filter: inverted ? "invert(1)" : "none",
+                    }}
+                    draggable={false}
+                    onLoad={handleImageLoad}
+                  />
+                </div>
+              </div>
+              <ImageControls
+                zoom={zoom}
+                onZoomIn={handleZoomIn}
+                onZoomOut={handleZoomOut}
+                onReset={handleResetView}
+                onInvert={() => setInverted(!inverted)}
+                inverted={inverted}
+              />
+              <ImageInfoBar
+                filename={image.file.name}
+                fileSize={image.file.size}
+                fileType={image.fileType}
+                dimensions={imageDimensions || undefined}
+              />
+            </>
+          ) : (
+            <ImageUpload onImageLoaded={handleImageLoaded} />
+          )}
         </div>
 
+        {/* Right: Analysis / Tutor Panel (40%) */}
         <div className="w-[40%] bg-gray-950">
           {mode === "quick_read" ? (
             <AnalysisPanel
               analysis={analysis}
               loading={analysisLoading}
               error={analysisError}
-              onRetry={runAnalysis}
+              onRetry={() => runAnalysis()}
             />
           ) : (
-            <TutorPanel hasImage={!!image} />
+            <TutorPanel hasImage={!!image} imageBase64={imageBase64} />
           )}
         </div>
       </div>
