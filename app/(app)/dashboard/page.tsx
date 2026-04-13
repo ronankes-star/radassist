@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { ImageUpload } from "@/components/viewer/ImageUpload";
 import { ImageControls } from "@/components/viewer/ImageControls";
 import { ImageInfoBar } from "@/components/viewer/ImageInfoBar";
@@ -55,11 +55,20 @@ export default function DashboardPage() {
     setPan({ x: 0, y: 0 });
   }
 
-  function handleWheel(e: React.WheelEvent) {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.25 : 0.25;
-    setZoom((z) => Math.min(Math.max(z + delta, 0.5), 5));
-  }
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+
+  // Use non-passive wheel listener for zoom (React onWheel is passive)
+  useEffect(() => {
+    const el = imageContainerRef.current;
+    if (!el) return;
+    function onWheel(e: WheelEvent) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.25 : 0.25;
+      setZoom((z) => Math.min(Math.max(z + delta, 0.5), 5));
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [image]);
 
   function handleMouseDown(e: React.MouseEvent) {
     if (zoom <= 1) return;
@@ -330,9 +339,9 @@ export default function DashboardPage() {
             {image && image.previewUrl ? (
               <>
                 <div
+                  ref={imageContainerRef}
                   className="absolute inset-0 overflow-hidden"
                   style={{ cursor: zoom > 1 ? (isPanning ? "grabbing" : "grab") : "default" }}
-                  onWheel={handleWheel}
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}

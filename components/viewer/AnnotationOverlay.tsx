@@ -100,7 +100,10 @@ export function AnnotationOverlay({
     <svg
       ref={svgRef}
       className="absolute inset-0 w-full h-full z-30"
-      style={{ cursor: activeTool === "select" ? "default" : "crosshair" }}
+      style={{
+        cursor: activeTool === "select" ? "default" : "crosshair",
+        pointerEvents: activeTool === "select" ? "none" : "auto",
+      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

@@ -17,7 +17,7 @@ When analyzing an image, provide your response as valid JSON with this exact str
   "next_steps": ["array of recommended follow-up actions"]
 }
 
-For positioned_findings, include the same key findings as in the findings array but with a position field indicating where on the image this finding is located (e.g., a right lower lobe opacity would be "bottom-right", a left upper lobe nodule would be "top-left", cardiomegaly would be "center"). Use your best judgment based on typical anatomy for the given modality and body region.
+For positioned_findings, include ONLY the abnormal/pathological findings (not normal observations). Each should have a position field indicating where on the image this finding is located (e.g., a right lower lobe opacity would be "bottom-right", a left upper lobe nodule would be "top-left", cardiomegaly would be "center"). Use your best judgment based on typical anatomy for the given modality and body region. Limit to 3-4 most important abnormal findings.
 
 Be systematic in your analysis:
 1. Identify the imaging modality and body region
