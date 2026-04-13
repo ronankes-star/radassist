@@ -4,10 +4,13 @@ import { useState } from "react";
 import { ImageUpload } from "@/components/viewer/ImageUpload";
 import { ImageControls } from "@/components/viewer/ImageControls";
 import { ImageInfoBar } from "@/components/viewer/ImageInfoBar";
+import { AnnotationOverlay } from "@/components/viewer/AnnotationOverlay";
+import { AnnotationToolbar } from "@/components/viewer/AnnotationToolbar";
+import { FindingLabels } from "@/components/viewer/FindingLabels";
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { ModeToggle } from "@/components/ui/ModeToggle";
 import { fileToBase64 } from "@/lib/utils";
-import { UploadedImage, AnalysisResult, CaseMode } from "@/lib/types";
+import { UploadedImage, AnalysisResult, CaseMode, Annotation, AnnotationTool, AnnotationColor } from "@/lib/types";
 import { TutorPanel } from "@/components/tutor/TutorPanel";
 import { useAuth } from "@/components/auth/AuthProvider";
 import toast from "react-hot-toast";
@@ -26,6 +29,11 @@ export default function DashboardPage() {
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [inverted, setInverted] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [annotationTool, setAnnotationTool] = useState<AnnotationTool>("select");
+  const [annotationColor, setAnnotationColor] = useState<AnnotationColor>("#ef4444");
+  const [annotationsVisible, setAnnotationsVisible] = useState(true);
+  const [findingLabelsVisible, setFindingLabelsVisible] = useState(true);
 
   function handleZoomIn() {
     setZoom((z) => Math.min(z + 0.5, 5));
@@ -64,6 +72,10 @@ export default function DashboardPage() {
   function handleImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
     const img = e.currentTarget;
     setImageDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+  }
+
+  function handleAddAnnotation(annotation: Annotation) {
+    setAnnotations((prev) => [...prev, annotation]);
   }
 
   async function runAnalysis(base64Override?: string) {
@@ -176,6 +188,7 @@ export default function DashboardPage() {
     setPan({ x: 0, y: 0 });
     setInverted(false);
     setImageDimensions(null);
+    setAnnotations([]);
   }
 
   return (
@@ -250,6 +263,30 @@ export default function DashboardPage() {
                 onInvert={() => setInverted(!inverted)}
                 inverted={inverted}
               />
+              <AnnotationToolbar
+                activeTool={annotationTool}
+                activeColor={annotationColor}
+                onToolChange={setAnnotationTool}
+                onColorChange={setAnnotationColor}
+                onClear={() => setAnnotations([])}
+                annotationsVisible={annotationsVisible}
+                onToggleVisibility={() => setAnnotationsVisible(!annotationsVisible)}
+                findingLabelsVisible={findingLabelsVisible}
+                onToggleFindingLabels={() => setFindingLabelsVisible(!findingLabelsVisible)}
+              />
+              <AnnotationOverlay
+                annotations={annotations}
+                onAddAnnotation={handleAddAnnotation}
+                activeTool={annotationTool}
+                activeColor={annotationColor}
+                visible={annotationsVisible}
+              />
+              {analysis?.positioned_findings && (
+                <FindingLabels
+                  findings={analysis.positioned_findings}
+                  visible={findingLabelsVisible}
+                />
+              )}
               <ImageInfoBar
                 filename={image.file.name}
                 fileSize={image.file.size}
